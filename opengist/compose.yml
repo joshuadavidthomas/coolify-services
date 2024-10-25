@@ -8,6 +8,11 @@ services:
       - OG_SSH_PORT=22222
     volumes:
       - opengist-data:/opengist
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6157/"]
+      interval: 5s
+      timeout: 20s
+      retries: 10
     labels:
       - traefik.tcp.routers.opengist-ssh.rule=HostSNI(`*`)
       - traefik.tcp.routers.opengist-ssh.entrypoints=ssh
