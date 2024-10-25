@@ -8,7 +8,7 @@ services:
     volumes:
       - opengist-data:/opengist
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6157/"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6157/healthcheck"]
       interval: 5s
       timeout: 20s
       retries: 10
