@@ -1,7 +1,6 @@
 services:
   opengist:
     image: ghcr.io/thomiceli/opengist:1.7
-    restart: unless-stopped
     environment:
       - SERVICE_FQDN_OPENGIST_6157
       - OG_EXTERNAL_URL=$SERVICE_URL_OPENGIST
