@@ -1,3 +1,10 @@
+# documentation: https://woodpecker-ci.org/docs
+# slogan: Simple yet powerful CI/CD engine with great extensibility
+# category: development
+# tags: ci, cd, devops, continuous-integration, docker, pipelines
+# logo: svgs/woodpecker.svg
+# port: 8000
+
 services:
   woodpecker:
     image: woodpeckerci/woodpecker-server:v3
@@ -5,24 +12,17 @@ services:
     volumes:
       - woodpecker-server-data:/var/lib/woodpecker
     environment:
-      # ---- Coolify URL magic ----
-      # http://woodpecker-xxxxx.example.com -> proxy to port 8000
+      # Coolify URL magic - generates URL and routes proxy to port 8000
       - SERVICE_URL_WOODPECKER_8000
       # Woodpecker's external URL (used for OAuth + webhooks)
-      - WOODPECKER_HOST=$SERVICE_URL_WOODPECKER_8000
+      - WOODPECKER_HOST=$SERVICE_URL_WOODPECKER
 
-      # ---- Coolify password magic ----
-      # Coolify will generate a password and inject as SERVICE_PASSWORD_WOODPECKER
-      - SERVICE_SPECIFIC_PASSWORD=${SERVICE_PASSWORD_WOODPECKER}
-      # Use that as the shared agent secret
-      - WOODPECKER_AGENT_SECRET=${SERVICE_PASSWORD_WOODPECKER}
+      # Coolify password magic - shared between server and agent
+      - WOODPECKER_AGENT_SECRET=$SERVICE_PASSWORD_WOODPECKER
 
-      # ---- Forgejo / Codeberg integration ----
-      # Set these in Coolify’s env UI:
-      # For Codeberg:
-      #   WOODPECKER_FORGEJO_URL=https://codeberg.org
-      # For self-hosted Forgejo:
-      #   WOODPECKER_FORGEJO_URL=https://git.yourdomain.tld
+      # Forgejo / Codeberg integration
+      # Set these in Coolify's env UI:
+      #   WOODPECKER_FORGEJO_URL=https://codeberg.org (or your self-hosted Forgejo)
       - WOODPECKER_FORGEJO=true
       - WOODPECKER_FORGEJO_URL=${WOODPECKER_FORGEJO_URL:?}
       - WOODPECKER_FORGEJO_CLIENT=${WOODPECKER_FORGEJO_CLIENT:?}
@@ -30,25 +30,33 @@ services:
 
       # Optional: open registration / user control
       - WOODPECKER_OPEN=${WOODPECKER_OPEN:-true}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/healthz"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
 
   woodpecker-agent:
     image: woodpeckerci/woodpecker-agent:v3
     restart: unless-stopped
     depends_on:
-      - woodpecker
+      woodpecker:
+        condition: service_healthy
     environment:
       # Connect to gRPC on the server
       - WOODPECKER_SERVER=woodpecker:9000
       # Reuse the same Coolify-generated password
-      - WOODPECKER_AGENT_SECRET=${SERVICE_PASSWORD_WOODPECKER}
-
+      - WOODPECKER_AGENT_SECRET=$SERVICE_PASSWORD_WOODPECKER
       # Run builds as Docker containers
       - WOODPECKER_BACKEND=docker
-      # If you want to force a specific network:
-      # - WOODPECKER_BACKEND_DOCKER_NETWORK=${WOODPECKER_BACKEND_DOCKER_NETWORK:-coolify}
-
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "echo", "ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   woodpecker-server-data:

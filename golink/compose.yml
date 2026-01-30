@@ -1,16 +1,30 @@
+# documentation: https://github.com/tailscale/golink
+# slogan: Private shortlink service for your Tailscale network
+# category: networking
+# tags: tailscale, shortlinks, url-shortener, vpn
+# logo: svgs/tailscale.svg
+
+# NOTE: golink is accessed via Tailscale at http://go/, not through Coolify's proxy.
+# No public URL is generated - this service is only accessible to your tailnet members.
+# After deployment, verify it's working by visiting http://go/ from a device on your tailnet.
+
 services:
   golink:
     image: ghcr.io/tailscale/golink:main
-    container_name: golink
     restart: unless-stopped
+    environment:
+      # Required on first run to join your tailnet.
+      # Get an auth key from: https://login.tailscale.com/admin/settings/keys
+      # Recommended: use a tagged key (e.g., tag:golink) and non-ephemeral.
+      # After first successful run, the key is no longer needed (stored in volume).
+      - TS_AUTHKEY=${TS_AUTHKEY:?}
     volumes:
-      - "data:/home/nonroot"
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      # Stores both Tailscale state (tsnet-golink/) and SQLite database
+      # Must be writable by uid 65532 (nonroot user)
+      - golink-data:/home/nonroot
+    # No healthcheck possible: distroless image has no shell.
+    # Container restart policy handles failures.
+    exclude_from_hc: true
 
 volumes:
-  data:
+  golink-data:

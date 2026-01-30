@@ -1,16 +1,24 @@
+# documentation: https://cal.com/docs
+# slogan: Scheduling infrastructure for everyone
+# category: productivity
+# tags: calcom, calendso, scheduling, open, source
+# logo: svgs/calcom.svg
+# port: 3000
+
 services:
   calcom:
     image: calcom.docker.scarf.sh/calcom/cal.com
     platform: linux/amd64
     environment:
-      - SERVICE_FQDN_CALCOM_3000
+      - SERVICE_URL_CALCOM_3000
       - NEXT_PUBLIC_LICENSE_CONSENT=agree
       - NODE_ENV=production
-      - NEXT_PUBLIC_WEBAPP_URL=${SERVICE_FQDN_CALCOM}
-      - NEXT_PUBLIC_API_V2_URL=${SERVICE_FQDN_CALCOM}/api/v2
-      - NEXTAUTH_URL=${SERVICE_FQDN_CALCOM}/api/auth
+      - NEXT_PUBLIC_WEBAPP_URL=${SERVICE_URL_CALCOM}
+      - NEXT_PUBLIC_API_V2_URL=${SERVICE_URL_CALCOM}/api/v2
+      - NEXTAUTH_URL=${SERVICE_URL_CALCOM}/api/auth
       - NEXTAUTH_SECRET=${SERVICE_BASE64_CALCOMSECRET}
       - CALENDSO_ENCRYPTION_KEY=${SERVICE_BASE64_CALCOMKEY}
+      # External PostgreSQL - set these in Coolify's env UI
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -25,4 +33,4 @@ services:
       - EMAIL_SERVER_USER=${EMAIL_SERVER_USER}
       - EMAIL_SERVER_PASSWORD=${EMAIL_SERVER_PASSWORD}
       - NEXT_PUBLIC_APP_NAME="Cal.com"
-      - ALLOWED_HOSTNAMES=["${SERVICE_FQDN_CALCOM}"]
+      - ALLOWED_HOSTNAMES=["${SERVICE_URL_CALCOM}"]

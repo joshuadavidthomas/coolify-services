@@ -1,8 +1,15 @@
+# documentation: https://github.com/thomiceli/opengist
+# slogan: Self-hosted pastebin powered by Git
+# category: development
+# tags: gist, pastebin, git, code-sharing, snippets
+# logo: svgs/opengist.svg
+# port: 6157
+
 services:
   opengist:
     image: ghcr.io/thomiceli/opengist:1.7
     environment:
-      - SERVICE_FQDN_OPENGIST_6157
+      - SERVICE_URL_OPENGIST_6157
       - OG_EXTERNAL_URL=$SERVICE_URL_OPENGIST
       - OG_SSH_PORT=22222
     volumes:
@@ -17,3 +24,6 @@ services:
       - traefik.tcp.routers.opengist-ssh.entrypoints=ssh
       - traefik.tcp.routers.opengist-ssh.service=opengist-ssh-svc
       - traefik.tcp.services.opengist-ssh-svc.loadbalancer.server.port=22222
+
+volumes:
+  opengist-data:
