@@ -1,0 +1,140 @@
+# documentation: https://docs.firecrawl.dev
+# slogan: Turn websites into LLM-ready data with web scraping, crawling, and extraction APIs.
+# category: ai
+# tags: ai, scraping, crawl, llm, api, web-scraper, playwright
+# logo: svgs/firecrawl.svg
+# port: 3002
+
+services:
+  api:
+    image: ghcr.io/mendableai/firecrawl:latest
+    environment:
+      - SERVICE_URL_FIRECRAWL_3002
+      - HOST=0.0.0.0
+      - PORT=${INTERNAL_PORT:-3002}
+      - EXTRACT_WORKER_PORT=${EXTRACT_WORKER_PORT:-3004}
+      - WORKER_PORT=${WORKER_PORT:-3005}
+      - NUQ_RABBITMQ_URL=amqp://rabbitmq:5672
+      - ENV=local
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      - REDIS_RATE_LIMIT_URL=redis://redis:6379
+      # Playwright
+      - PLAYWRIGHT_MICROSERVICE_URL=http://playwright-service:3000/scrape
+      # Postgres
+      - POSTGRES_USER=$SERVICE_USER_POSTGRES
+      - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_HOST=nuq-postgres
+      - POSTGRES_PORT=5432
+      # Authentication
+      - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION:-false}
+      # Worker settings
+      - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE:-8}
+      - CRAWL_CONCURRENT_REQUESTS=${CRAWL_CONCURRENT_REQUESTS:-10}
+      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-5}
+      - BROWSER_POOL_SIZE=${BROWSER_POOL_SIZE:-5}
+      # Optional: OpenAI / LLM integration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - MODEL_NAME=${MODEL_NAME}
+      - MODEL_EMBEDDING_NAME=${MODEL_EMBEDDING_NAME}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+      # Optional: Notifications
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
+      # Optional: Bull dashboard auth
+      - BULL_AUTH_KEY=${BULL_AUTH_KEY}
+      # Optional: Test API key
+      - TEST_API_KEY=${TEST_API_KEY}
+      # Optional: Supabase integration
+      - SUPABASE_ANON_TOKEN=${SUPABASE_ANON_TOKEN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
+      # Optional: Logging
+      - LOGGING_LEVEL=${LOGGING_LEVEL:-info}
+      # Optional: Proxy
+      - PROXY_SERVER=${PROXY_SERVER}
+      - PROXY_USERNAME=${PROXY_USERNAME}
+      - PROXY_PASSWORD=${PROXY_PASSWORD}
+      # Optional: SearXNG search
+      - SEARXNG_ENDPOINT=${SEARXNG_ENDPOINT}
+      - SEARXNG_ENGINES=${SEARXNG_ENGINES}
+      - SEARXNG_CATEGORIES=${SEARXNG_CATEGORIES}
+    command: ["node", "dist/src/harness.js", "--start-docker"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      nuq-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      playwright-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3002/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  playwright-service:
+    image: ghcr.io/mendableai/firecrawl-playwright-service:latest
+    environment:
+      - PORT=3000
+      - PROXY_SERVER=${PROXY_SERVER}
+      - PROXY_USERNAME=${PROXY_USERNAME}
+      - PROXY_PASSWORD=${PROXY_PASSWORD}
+      - BLOCK_MEDIA=${BLOCK_MEDIA}
+      - MAX_CONCURRENT_PAGES=${CRAWL_CONCURRENT_REQUESTS:-10}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    tmpfs:
+      - /tmp/.cache:noexec,nosuid,size=1g
+
+  redis:
+    image: redis:alpine
+    command: redis-server --bind 0.0.0.0
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    command: rabbitmq-server
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  nuq-postgres:
+    build:
+      context: ./nuq-postgres
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_USER=$SERVICE_USER_POSTGRES
+      - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+    volumes:
+      - firecrawl-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  firecrawl-postgres-data:
